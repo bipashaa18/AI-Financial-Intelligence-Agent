@@ -1,0 +1,12 @@
+langchain
+langchain-community
+langchain-ollama
+chromadb
+langchain-chroma
+pypdf
+tqdm
+jupyter
+ipykernel
+yfinance
+torchvision
+transformers
