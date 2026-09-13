@@ -1,12 +1,16 @@
 langchain
 langchain-community
+langchain-text-splitters
 langchain-ollama
 chromadb
 langchain-chroma
+langgraph
+langgraph-checkpoint-sqlite
 pypdf
 tqdm
 jupyter
 ipykernel
+streamlit
 yfinance
 torchvision
 transformers

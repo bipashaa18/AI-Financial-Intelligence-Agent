@@ -10,9 +10,8 @@ The project is designed as a portfolio/placement-ready demonstration of **RAG, a
 
 The agent can:
 
-- Search **33 institutional financial PDFs** using an advanced RAG pipeline.
-- Improve retrieval with **HyDE (Hypothetical Document Embeddings)**.
-- Expand queries with **RAG Fusion + Reciprocal Rank Fusion (RRF)**.
+- Search **22 institutional financial PDFs** using a local RAG pipeline.
+- Retrieve diverse results with **MMR (Maximal Marginal Relevance)**.
 - Fetch current market information through **Yahoo Finance / yfinance**.
 - Perform financial calculations such as:
   - CAGR
@@ -45,15 +44,15 @@ The agent can:
         ┌────────────────┐  ┌────────────────┐  ┌─────────────────┐
         │ Financial RAG  │  │ Market Data    │  │ Calculator      │
         │                │  │                │  │                 │
-        │ HyDE           │  │ yfinance       │  │ CAGR            │
-        │ RAG Fusion     │  │ Live prices    │  │ Sharpe          │
-        │ MMR Retrieval  │  │ P/E, beta etc. │  │ DCF             │
+        │ MMR Retrieval  │  │ yfinance       │  │ CAGR            │
+        │ Source/page    │  │ Live prices    │  │ Sharpe          │
+        │ citations      │  │ P/E, beta etc. │  │ DCF             │
         │ ChromaDB       │  │                │  │ Compound Interest│
         └───────┬────────┘  └────────────────┘  └─────────────────┘
                 │
                 ▼
        ┌─────────────────────┐
-       │ 33 Financial PDFs    │
+        │ 22 Financial PDFs    │
        │ RBI / IMF / OECD /   │
        │ Gold / Oil / Reports │
        └─────────────────────┘
@@ -66,49 +65,11 @@ The agent can:
 
 ---
 
-## 🔎 Advanced RAG Pipeline
+## 🔎 RAG Pipeline
 
-The document-search tool uses multiple retrieval strategies instead of relying on a single vector search.
+The production path in `app.py` uses ChromaDB with MMR retrieval. MMR balances relevance with diversity so the agent receives useful, less-redundant document chunks. Each indexed chunk keeps its source filename and PDF page metadata for citations.
 
-### 1. HyDE
-
-The user's question is first converted into a hypothetical financial-report passage.
-
-```text
-Question
-   ↓
-LLM generates hypothetical report passage
-   ↓
-Embed hypothetical passage
-   ↓
-ChromaDB retrieval
-```
-
-This can improve semantic matching when the wording of the question differs from the wording used in the source documents.
-
-### 2. RAG Fusion
-
-The original question is expanded into multiple plain-English search queries.
-
-```text
-Original question
-       ↓
-3 related search queries
-       ↓
-3 independent retrievals
-       ↓
-Reciprocal Rank Fusion
-       ↓
-Top-ranked documents
-```
-
-### 3. MMR Retrieval
-
-ChromaDB uses **Maximal Marginal Relevance (MMR)** to balance relevance with diversity and reduce redundant chunks.
-
-### 4. Deduplication
-
-HyDE and Fusion results are combined and deduplicated before the final top documents are passed to the agent.
+The notebooks contain earlier experiments with HyDE and RAG Fusion. Those experiments are useful for learning and comparison, but they are not required to run the Streamlit application.
 
 ---
 
@@ -145,17 +106,17 @@ route_question
 
 The agent currently has three tools:
 
-| Tool | Purpose |
-|---|---|
-| `search_financial_docs` | Search the internal financial document collection |
-| `get_market_data` | Retrieve current market information through yfinance |
-| `financial_calculator` | Perform financial calculations |
+| Tool                    | Purpose                                              |
+| ----------------------- | ---------------------------------------------------- |
+| `search_financial_docs` | Search the internal financial document collection    |
+| `get_market_data`       | Retrieve current market information through yfinance |
+| `financial_calculator`  | Perform financial calculations                       |
 
 ---
 
 ## 📚 Data
 
-The RAG corpus contains **33 institutional financial PDFs**, including material related to:
+The RAG corpus contains **22 institutional financial PDFs**, including material related to:
 
 - RBI
 - IMF
@@ -169,33 +130,32 @@ The RAG corpus contains **33 institutional financial PDFs**, including material 
 
 The documents are chunked and indexed in ChromaDB with source metadata so generated answers can cite the source file and page.
 
-Current project notes indicate approximately **32,300 indexed chunks**.
+The verified local index contains **30,980 indexed chunks** after running `python ingest.py`.
 
 ---
 
 ## 🧰 Tech Stack
 
-| Component | Technology |
-|---|---|
-| LLM | Ollama `llama3.2` |
-| Embeddings | Ollama `nomic-embed-text` |
-| RAG | LangChain |
-| Agent orchestration | LangGraph |
-| Vector database | ChromaDB |
-| Retrieval | MMR + HyDE + RAG Fusion |
-| Market data | yfinance |
-| Memory | SQLite + LangGraph checkpointing |
-| UI | Streamlit |
-| Language | Python |
-
+| Component           | Technology                       |
+| ------------------- | -------------------------------- |
+| LLM                 | Ollama `llama3.2`                |
+| Embeddings          | Ollama `nomic-embed-text`        |
+| RAG                 | LangChain                        |
+| Agent orchestration | LangGraph                        |
+| Vector database     | ChromaDB                         |
+| Retrieval           | MMR + HyDE + RAG Fusion          |
+| Market data         | yfinance                         |
+| Memory              | SQLite + LangGraph checkpointing |
+| UI                  | Streamlit                        |
+| Language            | Python                           |
 
 ## ⚙️ Local Setup
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/financial-rag-agent.git
-cd financial-rag-agent
+git clone https://github.com/<your-username>/AI-Financial-Intelligence-Agent.git
+cd AI-Financial-Intelligence-Agent
 ```
 
 ### 2. Create a virtual environment
@@ -222,7 +182,13 @@ pip install -r requirements.txt
 
 ### 4. Install and start Ollama
 
-Make sure Ollama is installed and running:
+Windows (PowerShell):
+
+```powershell
+winget install --id Ollama.Ollama -e
+```
+
+Restart PowerShell after installation, then make sure Ollama is running:
 
 ```bash
 ollama serve
@@ -235,13 +201,17 @@ ollama pull llama3.2
 ollama pull nomic-embed-text
 ```
 
-### 5. Prepare the vector database
+### 5. Build the vector database
 
-The ChromaDB directory must contain the indexed financial documents before launching the application.
+Build the ChromaDB index from the PDFs included in this repository. Keep Ollama running while this command embeds the documents.
 
-```text
-vectorstore/chroma/
+```powershell
+python ingest.py
 ```
+
+To rebuild an existing index from scratch, use `python ingest.py --reset`.
+
+When cloning the GitHub repository, check whether `vectorstore/chroma/` is already present. If it is included in the repository, skip ingestion; the uploaded index is ready to use. Run `python ingest.py` only when the index is missing or you have changed the source PDFs.
 
 ### 6. Start Streamlit
 
@@ -249,7 +219,11 @@ vectorstore/chroma/
 streamlit run app.py
 ```
 
-The application should open in your browser.
+Open the URL shown by Streamlit, usually `http://localhost:8501`.
+
+### 7. Stop the services
+
+Press `Ctrl+C` in the Streamlit and Ollama terminals when you are finished.
 
 ---
 
@@ -273,6 +247,18 @@ What is AAPL stock price and P/E ratio?
 Oil market outlook from the EIA report?
 
 What are the key risk factors in the reports?
+```
+
+The application uses the following tool automatically based on your question:
+
+- Internal report questions use `search_financial_docs`.
+- Current prices and market metrics use `get_market_data`.
+- Numerical questions use `financial_calculator`.
+
+For calculations, include the values explicitly. For example:
+
+```text
+Calculate CAGR with start_value 50000, end_value 120000, and years 8.
 ```
 
 ---
@@ -305,7 +291,7 @@ The calculator supports four operations.
 ```json
 {
   "fcfs": [100, 120, 140],
-  "discount_rate": 0.10,
+  "discount_rate": 0.1,
   "terminal_growth": 0.03
 }
 ```
@@ -352,6 +338,26 @@ The project can run locally without requiring a paid hosted LLM API.
 ### Why SQLite?
 
 It provides lightweight persistent checkpointing for conversation threads.
+
+---
+
+## 📁 Project Files
+
+| Path                               | Role                                                                                                                                                                                     |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.py`                           | Main Streamlit application. Creates the chat UI, loads Chroma and Ollama, defines the three agent tools, builds the LangGraph workflow, and stores conversation checkpoints in SQLite.   |
+| `ingest.py`                        | Command-line index builder. Loads PDFs from `financial-rag-agent/data/raw`, splits pages into chunks, creates Ollama embeddings, and writes the Chroma database to `vectorstore/chroma`. |
+| `requirements.txt`                 | Python dependencies for Streamlit, LangChain, LangGraph, ChromaDB, PDF loading, yfinance, Ollama integration, and notebook support.                                                      |
+| `financial-rag-agent/data/raw/`    | Source PDF corpus used by the RAG pipeline. These files are read by `ingest.py` and are not modified by the app.                                                                         |
+| `vectorstore/chroma/`              | Generated local Chroma vector database containing the embedded document chunks. It is ignored by Git and must be rebuilt on a new machine.                                               |
+| `memory.db`                        | Generated SQLite database used by LangGraph to persist conversation checkpoints. It is ignored by Git.                                                                                   |
+| `notebooks/Phase1_RAG.ipynb`       | Notebook for PDF loading, chunking, embedding, Chroma indexing, and basic retrieval experiments.                                                                                         |
+| `notebooks/Phase2_Tools.ipynb`     | Notebook for experimenting with market data, news/sentiment, and financial calculator tools.                                                                                             |
+| `notebooks/Phase3_Langgraph.ipynb` | Notebook for experimenting with routing, tool calls, graph nodes, and SQLite checkpointing.                                                                                              |
+| `.gitignore`                       | Prevents virtual environments, generated databases, vector stores, caches, logs, and local secrets from being committed.                                                                 |
+| `README.md`                        | Project documentation, setup instructions, architecture notes, example questions, and file responsibilities.                                                                             |
+
+The notebooks are optional. A normal application run only requires `app.py`, `ingest.py`, the PDF corpus, the installed dependencies, Ollama, and the generated Chroma index.
 
 ---
 

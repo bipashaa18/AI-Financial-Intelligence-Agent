@@ -3,11 +3,13 @@ import sqlite3
 import json
 import numpy as np
 import yfinance as yf
-import torch
 import operator
 import uuid
+from pathlib import Path
 
-torch.classes.__path__ = []
+ROOT_DIR = Path(__file__).resolve().parent
+VECTORSTORE_DIR = ROOT_DIR / "vectorstore" / "chroma"
+MEMORY_DB = ROOT_DIR / "memory.db"
 
 from typing import Annotated, Literal
 from langchain_core.tools import tool
@@ -43,13 +45,19 @@ if "messages" not in st.session_state:
 @st.cache_resource
 def load_app():
 
+    if not VECTORSTORE_DIR.exists():
+        raise FileNotFoundError(
+            f"Vector database not found at {VECTORSTORE_DIR}. "
+            "Run `python ingest.py` after starting Ollama and pulling nomic-embed-text."
+        )
+
     # ── PHASE 1: ChromaDB + Retriever ──────────────────────────
     # Connects to the FAISS index built in Phase1_RAG.ipynb
     embeddings = OllamaEmbeddings(model="nomic-embed-text")
     chroma_db  = Chroma(
         collection_name="financial_docs",
         embedding_function=embeddings,
-        persist_directory="vectorstore/chroma",
+        persist_directory=str(VECTORSTORE_DIR),
     )
     base_retriever = chroma_db.as_retriever(
         search_type="mmr",
@@ -292,7 +300,7 @@ RULES:
         })}
 
     # ── PHASE 3: Build Graph ────────────────────────────────────
-    conn   = sqlite3.connect("memory.db", check_same_thread=False)
+    conn   = sqlite3.connect(str(MEMORY_DB), check_same_thread=False)
     checkpointer = SqliteSaver(conn)
 
     graph = StateGraph(FinancialAgentState)
@@ -329,7 +337,12 @@ st.markdown(
 )
 
 # Load the agent once
-agent = load_app()
+try:
+    agent = load_app()
+except Exception as exc:
+    st.error(f"Unable to start the financial agent: {exc}")
+    st.info("Setup: start Ollama, pull the required models, then run `python ingest.py`.")
+    st.stop()
 
 # Display chat history
 for msg in st.session_state.messages:

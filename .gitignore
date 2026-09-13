@@ -33,11 +33,15 @@ ENV/
 !.env.example
 
 # =========================
-# Local vector databases
+# Generated vector database
 # =========================
-vectorstore/chroma/
-chroma/
-.chroma/
+# The Chroma index is intentionally uploaded for the demo so users do not
+# need to run the expensive ingestion step. Track it with Git LFS.
+vectorstore/*
+!vectorstore/chroma/
+!vectorstore/chroma/**
+/chroma/
+/.chroma/
 
 # =========================
 # Logs
